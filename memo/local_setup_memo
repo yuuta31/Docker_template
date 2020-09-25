@@ -1,0 +1,175 @@
+docker-try
+├── containers
+│   └── nginx
+│       ├── Dockerfile
+│       └── nginx.conf
+├── docker-compose.yml
+├── Dockerfile
+├── environments
+│   └── db.env
+├── Gemfile
+└── Gemfile.lock
+
+上記設定ファイルのmyprojectは、適宜変更する。
+
+--------------------
+$ docker-compose run --rm app rails _5.2.3_ new . --force --database=mysql --skip-bundle
+----------------------
+
+--------------------
+$ vim config/puma.rb
+--------------------
+```
+# Puma can serve each request in a thread from an internal thread pool.
+# The `threads` method setting takes two numbers: a minimum and maximum.
+# Any libraries that use thread pools should be configured to match
+# the maximum value specified for Puma. Default is set to 5 threads for minimum
+# and maximum; this matches the default thread size of Active Record.
+#
+threads_count = ENV.fetch("RAILS_MAX_THREADS") { 5 }
+threads threads_count, threads_count
+
+# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
+#
+port        ENV.fetch("PORT") { 3000 }
+
+# Specifies the `environment` that Puma will run in.
+#
+environment ENV.fetch("RAILS_ENV") { "development" }
+
+# Specifies the number of `workers` to boot in clustered mode.
+# Workers are forked webserver processes. If using threads and workers together
+# the concurrency of the application would be max `threads` * `workers`.
+# Workers do not work on JRuby or Windows (both of which do not support
+# processes).
+#
+# workers ENV.fetch("WEB_CONCURRENCY") { 2 }
+
+# Use the `preload_app!` method when specifying a `workers` number.
+# This directive tells Puma to first boot the application and load code
+# before forking the application. This takes advantage of Copy On Write
+# process behavior so workers use less memory.
+#
+# preload_app!
+
+# Allow puma to be restarted by `rails restart` command.
+plugin :tmp_restart
+
+
+# threads_count = ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i
+# threads threads_count, threads_count
+# port        ENV.fetch("PORT") { 3000 }
+# environment ENV.fetch("RAILS_ENV") { "development" }
+# plugin :tmp_restart
+
+app_root = File.expand_path("../..", __FILE__)
+bind "unix://#{app_root}/tmp/sockets/puma.sock"
+
+stdout_redirect "#{app_root}/log/puma.stdout.log", "#{app_root}/log/puma.stderr.log", true
+```
+--------------------
+$ vim config/database.yml
+--------------------
+
+```
+# MySQL. Versions 5.1.10 and up are supported.
+#
+# Install the MySQL driver
+#   gem install mysql2
+#
+# Ensure the MySQL gem is defined in your Gemfile
+#   gem 'mysql2'
+#
+# And be sure to use new-style password hashing:
+#   https://dev.mysql.com/doc/refman/5.7/en/password-hashing.html
+#
+
+default: &default
+  adapter: mysql2
+  encoding: utf8
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+#下記3行は絶対変更すること
+  username: <%= ENV.fetch('MYSQL_USER') { 'root' } %>
+  password: <%= ENV.fetch('MYSQL_PASSWORD') { 'password' } %>
+  host: db
+
+development:
+  <<: *default
+  database: myproject_development
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  <<: *default
+  database: myproject_test
+
+# As with config/secrets.yml, you never want to store sensitive information,
+# like your database password, in your source code. If your source code is
+# ever seen by anyone, they now have access to your database.
+#
+# Instead, provide the password as a unix environment variable when you boot
+# the app. Read http://guides.rubyonrails.org/configuring.html#configuring-a-database
+# for a full rundown on how to provide these environment variables in a
+# production deployment.
+#
+# On Heroku and other platform providers, you may have a full connection URL
+# available as an environment variable. For example:
+#
+#   DATABASE_URL="mysql2://myuser:mypass@localhost/somedatabase"
+#
+# You can use this database configuration with:
+#
+#   production:
+#     url: <%= ENV['DATABASE_URL'] %>
+#
+production:
+  <<: *default
+  database: myproject_production
+  username: myproject
+  password: <%= ENV['MYPROJECT_DATABASE_PASSWORD'] %>
+
+```
+--------------------
+$ docker-compose build
+--------------------
+
+--------------------
+$ docker-compose up -d
+--------------------
+
+docker-compose up -d の起動状態で下記コマンドをうつこと
+--------------------
+vim db/grant_user.sql
+--------------------
+```
+GRANT ALL PRIVILEGES ON *.* TO 'user_name'@'%';
+FLUSH PRIVILEGES;
+```
+--------------------
+$ docker-compose exec db mysql -u root -p -e"$(cat db/grant_user.sql)"
+$ password: db_root_password (上記コマンドに必須にdb.envのpasswordを打ち込む)
+--------------------
+--------------------
+$docker-compose exec db mysql -u user_name -p -e"show grants;"
+$Password: user_password (上記コマンドに必須にdb.envのpasswordを打ち込む)
+--------------------
+```
++------------------------------------------------+
+
+| Grants for user_name@%                         |
+
++------------------------------------------------+
+
+| GRANT ALL PRIVILEGES ON *.* TO 'user_name'@'%' |
+
++------------------------------------------------+
+```
+
+--------------------
+$ docker-compose exec app rails db:create
+--------------------
+$ docker-compose exec app rails g scaffold User name:string email:string
+--------------------
+$ docker-compose exec app rails db:migrate
+--------------------

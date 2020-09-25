@@ -1,0 +1,58 @@
+デプロイ時フロー
+master.keyを移し替え
+nginx.conf編集
+production編集
+
+##ローカルサーバーを落とす時
+ docker-compose dawn
+##ローカルサーバーを立てるとき(すべてのコンテナが立ち上がる)
+ docker-compose up -d
+##ローカルサーバーの再起動
+ docker-compose restart
+##不要なイメージ削除
+ docker rm $(docker ps -a -q) && docker rmi $(docker images -q)
+##Gemfile変更時
+ docker-compose build
+ docker-compose up -d
+##rspec実行コマンド
+docker-compose up -d を実行後に下記を実行
+docker-compose exec app bundle exec rspec spec/models/image_spec.rb
+##コントローラー作成時
+docker-compose exec web rails g controller comments create destroy --skip-template-engine (テンプレートをスキップしている)
+##migrate時
+ docker-compose run web(アプリ名) bundle exec rake db:migrate`
+ docker-compose run --rm app rails db:migrate:status
+##credintialsの編集
+docker-compose run -e EDITOR="vim" app rails credentials:edit
+EDITOR="vi" bin/rails credentials:edit
+Rails.application.credentials[:mysql][:MYSQL_USER]  (使用例)
+##rails cの手順
+docker-compose up -d の後に
+docker exec -it app_container(コンテナ名) bash
+bundle exec rails c
+##model作成時
+ docker-compose run web(アプリ名) bundle exec rails g model board name:string title:string body:text
+ 
+ docker-compose run web bundle exec rails g model comment board:references name:string comment:text
+##中間テーブル
+ docker-compose exec web bundle exec \ rails g model board_tag_relation board:references tag:references
+##seed実行時
+docker-compose exec web bundle exec rake db:seed
+##kaminari実行コマンド
+docker-compose exec web bundle exec rails g kaminari:config
+##gem annotateをインストールしたときに実行するコマンド
+docker-compose exec web bundle exec annotate
+##bootstrapに合わせたビューが作成される
+docker-compose exec web bundle exec rails g kaminari:views bootstrap4
+##binding.pryの実行方法
+docker ps
+で、webのコンテナ名を見て、そのコンテナに
+docker attach コンテナ名
+その後に、binding.pryを挟み込み、localhost:3000で実行すると
+"docker attach コンテナ名"で実行したlogにbinding.pryのlogが実行される
+##sequelpro 接続
+標準に切り替え
+ホスト 127.0.0.1
+ユーザー名: root (database.ymlに記載のユーザー名)
+パスワード: password (database.ymlにパスワード) 
+4306（docker-compose.ymlのportsに記載した左側）

@@ -1,0 +1,111 @@
+##Vueの導入
+
+gemファイルにwebpack後、bundle installをする
+```
+gem 'webpacker'
+```
+その後yarnをインストールをする
+
+$ docker-compose run アプリ名 rails webpacker:install
+$ docker-compose run アプリ名 rails webpacker:install:vue
+$ docker-compose run アプリ名 bin/webpack
+
+javascript/packs/index.jsのvueの読み込み型を変更する
+```webpack/environment.js
+.
+.
+.
+environment.config.merge({
+  resolve: {
+    alias: {
+      'vue$': 'vue/dist/vue.esm.js'
+    }
+  }
+})
+```
+```javascript/packs/index.js
+- import Vue from 'vue/dist/vue.esm'; //削除
++ import Vue from 'vue'; //追加
+
+
+const app = new Vue({
+  el: '#app',
+  data: {
+    message: "Can you say hello?"
+  }
+});
+```
+
+$ yarn add vuetify
+$ yarn add sass asaa-loader fibers deepmerge -D
+
+一番上の階層で、webpack.config.jsのファイルを作成する
+```webpack.config.js
+// webpack.config.js
+
+module.exports = {
+  rules: [
+    {
+      test: /\.s(c|a)ss$/,
+      use: [
+        'vue-style-loader',
+        'css-loader',
+        {
+          loader: 'sass-loader',
+          // Requires sass-loader@^7.0.0
+          options: {
+            implementation: require('sass'),
+            fiber: require('fibers'),
+            indentedSyntax: true // optional
+          },
+          // Requires sass-loader@^8.0.0
+          options: {
+            implementation: require('sass'),
+            sassOptions: {
+              fiber: require('fibers'),
+              indentedSyntax: true // optional
+            },
+          },
+        },
+      ],
+    },
+  ],
+}
+```
+
+vuetifyの設定ファイルを作成する
+```javascript/packs/vuetify.js
+
+import Vue from 'vue'
+import Vuetify from 'vuetify'
+import 'vuetify/dist/vuetify.min.css'
+
+Vue.use(Vuetify)
+
+const opts = {}
+
+export default new Vuetify(opts)
+```
+
+vueのindexファイルでvuetifyファイルを読み込む
+```javascript/packs/index.js
+import Vue from 'vue'
+import vuetify from 'packs/vuetify' // path to vuetify export
+
+const app = new Vue({
+  vuetify,
+  data () {
+    return {
+      
+    }
+  }
+}).$mount('#all-index')
+```
+
+application.htmlファイルでvueのフォント読み込む
+```
+%link{href: "https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"    , rel: "stylesheet"}
+```
+```
+%link{href: "https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css", rel: "stylesheet"}
+```
